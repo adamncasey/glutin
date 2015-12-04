@@ -16,6 +16,7 @@ use self::make_current_guard::CurrentContextGuard;
 use libc;
 use std::ffi::{CStr, CString, OsStr};
 use std::os::windows::ffi::OsStrExt;
+use std::os::raw::c_void;
 use std::{mem, ptr};
 use std::io;
 
@@ -168,7 +169,7 @@ impl GlContext for Context {
 
     #[inline]
     fn is_current(&self) -> bool {
-        unsafe { gl::wgl::GetCurrentContext() == self.context.0 as *const libc::c_void }
+        unsafe { gl::wgl::GetCurrentContext() == self.context.0 as *const c_void }
     }
 
     fn get_proc_address(&self, addr: &str) -> *const () {
@@ -317,8 +318,8 @@ unsafe fn create_context(extra: Option<(&gl::wgl_extra::Wgl, &PixelFormatRequire
 
             attributes.push(0);
 
-            let ctxt = extra_functions.CreateContextAttribsARB(hdc as *const libc::c_void,
-                                                               share as *const libc::c_void,
+            let ctxt = extra_functions.CreateContextAttribsARB(hdc as *const c_void,
+                                                               share as *const c_void,
                                                                attributes.as_ptr());
 
             if ctxt.is_null() {
@@ -333,14 +334,14 @@ unsafe fn create_context(extra: Option<(&gl::wgl_extra::Wgl, &PixelFormatRequire
         share = ptr::null_mut();
     }
 
-    let ctxt = gl::wgl::CreateContext(hdc as *const libc::c_void);
+    let ctxt = gl::wgl::CreateContext(hdc as *const c_void);
     if ctxt.is_null() {
         return Err(CreationError::OsError(format!("wglCreateContext failed: {}",
                                                   format!("{}", io::Error::last_os_error()))));
     }
 
     if !share.is_null() {
-        if gl::wgl::ShareLists(share as *const libc::c_void, ctxt) == 0 {
+        if gl::wgl::ShareLists(share as *const c_void, ctxt) == 0 {
             return Err(CreationError::OsError(format!("wglShareLists failed: {}",
                                                       format!("{}", io::Error::last_os_error()))));
         }
@@ -564,7 +565,7 @@ unsafe fn load_extra_functions(window: winapi::HWND) -> Result<gl::wgl_extra::Wg
     Ok(gl::wgl_extra::Wgl::load_with(|addr| {
         let addr = CString::new(addr.as_bytes()).unwrap();
         let addr = addr.as_ptr();
-        gl::wgl::GetProcAddress(addr) as *const libc::c_void
+        gl::wgl::GetProcAddress(addr) as *const c_void
     }))
 }
 
